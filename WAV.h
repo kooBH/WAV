@@ -74,8 +74,8 @@ public:
 
   /* There might be compile error for ReadUnit() in Visual Studio.
    * in this case, try to update your VS to most recent version. */
-  void ReadUnit(short*dest,int unit);
-  void ReadUnit(float*dest,int unit);
+  size_t ReadUnit(short*dest,int unit);
+  size_t ReadUnit(float*dest,int unit);
   int IsEOF() const;
 
   void Print() const;

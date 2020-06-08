@@ -322,11 +322,11 @@ void WAV::ReadHeader() {
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 }
 
-void WAV::ReadUnit(short*dest,int unit){
-  fread(dest,size_unit,unit,file);
+size_t WAV::ReadUnit(short*dest,int unit){
+  return fread(dest,size_unit,unit,file);
 }
-void WAV::ReadUnit(float*dest,int unit){
-  fread(dest,size_unit,unit,file);
+size_t WAV::ReadUnit(float*dest,int unit){
+  return fread(dest,size_unit,unit,file);
 }
 
 void WAV::Finish() {
