@@ -190,7 +190,6 @@ int WAV::OpenFile(const char *_file_name) {
     return 1;
   }
   ReadHeader();
-  file_name = _file_name;
   IsOpen = true;
 
   UseBuf(frame_size,shift_size);
@@ -413,7 +412,9 @@ void WAV::Rewind() {
   printf("INFO::Rewind\n");
 #endif
   rewind(file);
+  ReadHeader();
 }
+
 void WAV::SplitBy2(const char* f1,const char* f2){
   if(!IsOpen){
     printf("ERROR::WAV must be opened\n");
