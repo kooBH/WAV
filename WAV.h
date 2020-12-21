@@ -20,7 +20,7 @@ private:
   bool non_pcm;
   // 4bytes fixed size header infomation -> uint32_t
   char riff_id[4];    // riff string
-  uint32_t riff_size; // overall size of file in bytes
+  uint32_t riff_size; // overall size of fp in bytes
   char wave_id[4];    // wave string
   char fmt_id[4];     // fmt string with trailing null char
 
@@ -45,7 +45,7 @@ private:
   char data_id[4];      // DATA string or FLLR string
   uint32_t data_size;   // NumSamples * NumChannels * BitsPerSample/8 - size of
                         // the nex chunk that will be read
-  FILE *file;
+  FILE *fp;
   bool IsOpen;
   const char *file_name;
   // For Input usage only
@@ -96,9 +96,9 @@ public:
   inline short GetFmtType();
   inline void UseBuf(int frame_size,int shift_size);
   inline bool checkValidHeader();
-  inline void* GetBuf();
+  inline FILE* GetFilePointer();
 
-  /*Split Wav file into each channel */
+  /*Split Wav fp into each channel */
   inline void Split(char* );
 };
 
@@ -110,6 +110,9 @@ WAV::WAV() {
 #ifndef NDEBUG
 //  printf("WAV::contsructor\n");
 #endif
+  fp = nullptr;
+  buf = nullptr;
+
   riff_id[0] = 'R';
   riff_id[1] = 'I';
   riff_id[2] = 'F';
@@ -219,33 +222,33 @@ WAV::~WAV() {
 }
 
 void WAV::WriteHeader() {
-  if (!file) {
+  if (!fp) {
     printf("ERROR::File doesn't exist\n");
   }
-  fseek(file, 0, SEEK_SET);
+  fseek(fp, 0, SEEK_SET);
 #ifndef NDEBUG
-//  printf("WriteHeader::ftell %ld\n",ftell(file));
+//  printf("WriteHeader::ftell %ld\n",ftell(fp));
 #endif
   riff_size = data_size + 44;
 
-  fwrite(riff_id, sizeof(char), 4, file);
-  fwrite(&(riff_size), sizeof(uint32_t), 1, file);
-  fwrite((wave_id), sizeof(char), 4, file);
-  fwrite((fmt_id), sizeof(char), 4, file);
-  fwrite(&(fmt_size), sizeof(uint32_t), 1, file);
-  fwrite(&(fmt_type), sizeof(short), 1, file);
-  fwrite(&(channels), sizeof(short), 1, file);
-  fwrite(&(sample_rate), sizeof(uint32_t), 1, file);
-  fwrite(&(byte_rate), sizeof(uint32_t), 1, file);
-  fwrite(&(block_align), sizeof(short), 1, file);
-  fwrite(&(bit_per_sample), sizeof(short), 1, file);
-  fwrite(data_id, sizeof(char), 4, file);
-  fwrite(&(data_size), sizeof(uint32_t), 1, file);
+  fwrite(riff_id, sizeof(char), 4, fp);
+  fwrite(&(riff_size), sizeof(uint32_t), 1, fp);
+  fwrite((wave_id), sizeof(char), 4, fp);
+  fwrite((fmt_id), sizeof(char), 4, fp);
+  fwrite(&(fmt_size), sizeof(uint32_t), 1, fp);
+  fwrite(&(fmt_type), sizeof(short), 1, fp);
+  fwrite(&(channels), sizeof(short), 1, fp);
+  fwrite(&(sample_rate), sizeof(uint32_t), 1, fp);
+  fwrite(&(byte_rate), sizeof(uint32_t), 1, fp);
+  fwrite(&(block_align), sizeof(short), 1, fp);
+  fwrite(&(bit_per_sample), sizeof(short), 1, fp);
+  fwrite(data_id, sizeof(char), 4, fp);
+  fwrite(&(data_size), sizeof(uint32_t), 1, fp);
 }
 
 int WAV::NewFile(const char *_file_name) {
-  file = fopen(_file_name, "wb");
-  if (file == NULL) {
+  fp = fopen(_file_name, "wb");
+  if (fp == NULL) {
     printf("WAV::NewFile::Failed to Open : %s\n", _file_name);
     exit(-1);
   }
@@ -257,12 +260,12 @@ int WAV::NewFile(const char *_file_name) {
 };
 
 int WAV::Append(short *app_data, unsigned int app_size) {
-  fseek(file, 0, SEEK_END);
+  fseek(fp, 0, SEEK_END);
 #ifndef NDEBUG
-// printf("Append::ftell %ld | size %d\n",ftell(file),app_size);
+// printf("Append::ftell %ld | size %d\n",ftell(fp),app_size);
 #endif
 
-  if (!fwrite(reinterpret_cast<void*>( app_data), size_unit, app_size, file)){
+  if (!fwrite(reinterpret_cast<void*>( app_data), size_unit, app_size, fp)){
     printf("ERROR::Append<short>\n");
     exit(-1);
   }
@@ -272,11 +275,11 @@ int WAV::Append(short *app_data, unsigned int app_size) {
 };
 
 int WAV::Append(float*app_data, unsigned int app_size) {
-  fseek(file, 0, SEEK_END);
+  fseek(fp, 0, SEEK_END);
 #ifndef NDEBUG
-// printf("Append::ftell %ld | size %d\n",ftell(file),app_size);
+// printf("Append::ftell %ld | size %d\n",ftell(fp),app_size);
 #endif
-  if (!fwrite(reinterpret_cast<void*>(app_data), size_unit, app_size, file)){
+  if (!fwrite(reinterpret_cast<void*>(app_data), size_unit, app_size, fp)){
     printf("ERROR::Append<float>\n");
     exit(-1);
   }
@@ -288,8 +291,8 @@ int WAV::Append(float*app_data, unsigned int app_size) {
 
 
 int WAV::OpenFile(const char *_file_name) {
-  file = fopen(_file_name, "rb");
-  if (file == NULL) {
+  fp = fopen(_file_name, "rb");
+  if (fp == NULL) {
     printf("WAV::OpenFile::Failed to Open : '%s'\n", _file_name);
     return 1;
   }
@@ -310,23 +313,23 @@ void WAV::ReadHeader() {
    * http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
    * */
 
-  if (!file) {
+  if (!fp) {
     printf("ERROR::File doesn't exist\n");
   }
 
-  fread(riff_id, sizeof(riff_id), 1, file);
+  fread(riff_id, sizeof(riff_id), 1, fp);
 
-  fread(buffer4, sizeof(buffer4), 1, file);
+  fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
   riff_size =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
-  // fread(riff_size,sizeof(riff_size),1,file);
+  // fread(riff_size,sizeof(riff_size),1,fp);
 
-  fread(wave_id, sizeof(wave_id), 1, file);
+  fread(wave_id, sizeof(wave_id), 1, fp);
 
-  fread(fmt_id, sizeof(fmt_id), 1, file);
+  fread(fmt_id, sizeof(fmt_id), 1, fp);
 
-  fread(buffer4, sizeof(buffer4), 1, file);
+  fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
   //          | pcm  | non-pcm
   // fmt_size |  16  |     18
@@ -344,21 +347,20 @@ void WAV::ReadHeader() {
   // Unkown fmt_size;
   else fmt_size=16;
 
-  fread(buffer2, sizeof(buffer2), 1, file);
+  fread(buffer2, sizeof(buffer2), 1, fp);
   // convert little endial to big endian 2 bytes int;
   fmt_type = buffer2[0] | (buffer2[1] << 8);
   if(fmt_type==1 || fmt_type == 3)
     ;
-  // 모르????인 경우 or tpye ?보가 깨져?을 경우.
+  // for undefined type
   else
     fmt_type = 1;
 
 
-
-  // convert little endial to big endian 2 bytes int;
+  // convert little endian to big endian 2 bytes int;
   
-  fread(buffer2, sizeof(buffer2), 1, file);
-  //Checking
+  fread(buffer2, sizeof(buffer2), 1, fp);
+  //Check
   if(channels!=0){
   temp = buffer2[0] | (buffer2[1] << 8);
     if(temp!=channels){
@@ -369,9 +371,9 @@ void WAV::ReadHeader() {
   else
     channels = buffer2[0] | (buffer2[1] << 8);
 
-  fread(buffer4, sizeof(buffer4), 1, file);
+  fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
-  // Checking
+  // Check
   if(sample_rate!=0){
     temp
       =  buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
@@ -385,16 +387,16 @@ void WAV::ReadHeader() {
     sample_rate =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 
-  fread(buffer4, sizeof(buffer4), 1, file);
+  fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
   byte_rate =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 
-  fread(buffer2, sizeof(buffer2), 1, file);
+  fread(buffer2, sizeof(buffer2), 1, fp);
   // convert little endial to big endian 2 bytes int;
   block_align = buffer2[0] | (buffer2[1] << 8);
 
-  fread(buffer2, sizeof(buffer2), 1, file);
+  fread(buffer2, sizeof(buffer2), 1, fp);
   // convert little endial to big endian 2 bytes int;
   bit_per_sample = buffer2[0] | (buffer2[1] << 8);
 
@@ -403,40 +405,40 @@ void WAV::ReadHeader() {
 
   /* non_pcm format has more elements */
   if(non_pcm){
-    fread(buffer2, sizeof(buffer2), 1, file);
+    fread(buffer2, sizeof(buffer2), 1, fp);
     cb_size= buffer2[0] | (buffer2[1] << 8);
     
-    fread(fact_id, sizeof(fact_id), 1, file);
+    fread(fact_id, sizeof(fact_id), 1, fp);
 
-    fread(buffer4, sizeof(buffer4), 1, file);
+    fread(buffer4, sizeof(buffer4), 1, fp);
     fact_size =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 
-    fread(buffer4, sizeof(buffer4), 1, file);
+    fread(buffer4, sizeof(buffer4), 1, fp);
     dwSampleLength =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
   }
 
-  fread(data_id, sizeof(data_id), 1, file);
+  fread(data_id, sizeof(data_id), 1, fp);
 
-  fread(buffer4, sizeof(buffer4), 1, file);
+  fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
   data_size =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 }
 
 size_t WAV::ReadUnit(short*dest,int unit){
-  return fread(dest,size_unit,unit,file);
+  return fread(dest,size_unit,unit,fp);
 }
 size_t WAV::ReadUnit(float*dest,int unit){
-  return fread(dest,size_unit,unit,file);
+  return fread(dest,size_unit,unit,fp);
 }
 
 void WAV::Finish() {
 
-  if (file) {
+  if (fp) {
     WriteHeader();
-    fclose(file);
+    fclose(fp);
     IsOpen = false;
   }
 }
@@ -509,13 +511,13 @@ bool WAV::checkValidHeader() {
 }
 
 
-int WAV::IsEOF() const { return feof(file); }
+int WAV::IsEOF() const { return feof(fp); }
 
 void WAV::Rewind() {
 #ifndef NDEBUG
   printf("INFO::Rewind\n");
 #endif
-  rewind(file);
+  rewind(fp);
   ReadHeader();
 }
 
@@ -536,11 +538,11 @@ void WAV::SplitBy2(const char* f1,const char* f2){
 
   short temp;
 
-  while(!feof(file)){
-    fread(&temp, size_unit, 1, file);
+  while(!feof(fp)){
+    fread(&temp, size_unit, 1, fp);
     w1.Append(&temp,1);
 
-    fread(&temp, size_unit, 1, file);
+    fread(&temp, size_unit, 1, fp);
     w2.Append(&temp,1);
  
   }
@@ -593,7 +595,7 @@ uint32_t WAV::GetSampleRate(){
 
 int WAV::Convert2ShiftedArray(double **raw) {
   int i, j,read;
-  read=fread(buf, size_unit, channels * shift_size, file);
+  read=fread(buf, size_unit, channels * shift_size, fp);
 
   /*
 
@@ -666,7 +668,7 @@ int WAV::Convert2ShiftedArray(double **raw) {
 
 int WAV::Convert2ShiftedArray(double *raw) {
   int i, j,read;
-  read=fread(buf, size_unit, channels * shift_size, file);
+  read=fread(buf, size_unit, channels * shift_size, fp);
 
   /*
 
@@ -780,5 +782,8 @@ void WAV::Split(char* _file_name ) {
   
 }
 
+FILE* WAV::GetFilePointer() {
+  return fp;
+}
 
 #endif
