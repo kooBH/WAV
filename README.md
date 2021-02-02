@@ -17,7 +17,7 @@ c++ WAV class
  
  # Input 
  ```c++
- WAV input();
+ WAV input;
  input.OpenFile("input.wav");
  
  while(!input.IsEOF()){
