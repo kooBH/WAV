@@ -17,7 +17,7 @@ c++ WAV class
  WAV input();
  input.OpenFile("input.wav");
  
- while(input.IsEOF()){
+ while(!input.IsEOF()){
     input.ReadUnit(short_type_buffer,shift_size*channels);
     ...
  }
