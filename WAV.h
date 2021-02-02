@@ -247,7 +247,7 @@ void WAV::WriteHeader() {
 }
 
 int WAV::NewFile(const char *_file_name) {
-  fp = fopen(_file_name, "wb");
+  fp = fopen(_file_name, "w+");
   if (fp == NULL) {
     printf("WAV::NewFile::Failed to Open : %s\n", _file_name);
     exit(-1);
@@ -291,7 +291,8 @@ int WAV::Append(float*app_data, unsigned int app_size) {
 
 
 int WAV::OpenFile(const char *_file_name) {
-  fp = fopen(_file_name, "rb");
+  fp = fopen(_file_name, "r+");
+  file_name = _file_name;
   if (fp == NULL) {
     printf("WAV::OpenFile::Failed to Open : '%s'\n", _file_name);
     return 1;
@@ -445,8 +446,10 @@ void WAV::Finish() {
 
 void WAV::Print()const {
   int t;
-  if (!IsOpen)
+  if (!IsOpen) {
+    printf("ERROR::file is not opened.\n");
     return;
+  }
   printf("-------- WAV HEADER INFOMATION of [ %s ] ----------\n", file_name);
   printf("riff_id        : %c%c%c%c\n", riff_id[0], riff_id[1], riff_id[2],
          riff_id[3]);

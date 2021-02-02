@@ -1,0 +1,18 @@
+
+# Visual Stduio
+*.sln
+*.vcxproj
+*.filters
+*.dir
+Release
+Debug
+x64
+.vs
+*.user
+*.exe
+*.pdb
+*.ilk
+
+
+# data
+*.wav
