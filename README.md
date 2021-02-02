@@ -9,7 +9,7 @@ c++ WAV class
  
  while(IsProcessing){
     ...
-    output.Append(short_type_buf,shift_size*channels);
+    output.Append(short_type_buffer,shift_size*channels);
  }
  
  output.Finish()
