@@ -84,6 +84,8 @@ public:
   inline int Convert2ShiftedArray(double **raw);
   inline int Convert2ShiftedArray(double *raw);
 
+  inline int Convert2Array(double **raw);
+
   // Split 2 channel Wav into two 1 channel wav files.
   inline void SplitBy2(const char* f1,const char* f2);
   inline void SetSizes(int frame,int shift);
@@ -291,7 +293,7 @@ int WAV::Append(float*app_data, unsigned int app_size) {
 
 
 int WAV::OpenFile(const char *_file_name) {
-  fp = fopen(_file_name, "r+");
+  fp = fopen(_file_name, "rb");
   file_name = _file_name;
   if (fp == NULL) {
     printf("WAV::OpenFile::Failed to Open : '%s'\n", _file_name);
@@ -742,6 +744,60 @@ int WAV::Convert2ShiftedArray(double *raw) {
 
     return 0;
 }
+
+int WAV::Convert2Array(double **raw) {
+  int i, j,read;
+  read=fread(buf, size_unit, channels * shift_size, fp);
+  //printf("read : %d\n",read);
+  if(read == channels*shift_size){
+    // COPY as doulbe
+    //  memcpy(arr,data.buffer+read_offset,shift_size);
+    switch(fmt_type){
+      case 3:
+       for (i = 0; i < shift_size; i++) {
+        for (j = 0; j < channels; j++){
+          raw[j][i] 
+            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+        }
+       }
+        break;
+      default:
+        for (i = 0; i < shift_size; i++) {
+          for (j = 0; j < channels; j++){
+            raw[j][i] 
+              = static_cast<double>(reinterpret_cast<short*>(buf)[i * channels + j]);
+          }
+        }
+    break;
+    }
+    return 1;
+  // Not enough buf to read
+  }else{
+    read = read/channels;
+    switch(fmt_type){
+      case 3:
+        for (i = 0; i < read; i++) {
+          for (j = 0; j < channels; j++)
+          raw[j][i]
+             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+          }
+      break;
+      default:
+        for (i = 0; i < read; i++) {
+          for (j = 0; j < channels; j++)
+          raw[j][i ]
+             =  static_cast<double>(reinterpret_cast<short*>(buf)[i * channels + j]);
+          }
+    break;
+    }
+    for (i = read; i < shift_size; i++) {
+      for (j = 0; j < channels; j++)
+        raw[j][i] = 0;
+    }
+  }
+    return 0;
+}
+
 
 
 
