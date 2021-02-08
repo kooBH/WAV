@@ -249,7 +249,7 @@ void WAV::WriteHeader() {
 }
 
 int WAV::NewFile(const char *_file_name) {
-  fp = fopen(_file_name, "w+");
+  fp = fopen(_file_name, "wb");
   if (fp == NULL) {
     printf("WAV::NewFile::Failed to Open : %s\n", _file_name);
     exit(-1);
