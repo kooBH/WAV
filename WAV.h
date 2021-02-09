@@ -104,9 +104,6 @@ public:
   inline void Split(char* );
 };
 
-#include "WAV.h"
-
-
 /* default WAV format */
 WAV::WAV() {
 #ifndef NDEBUG
@@ -745,6 +742,9 @@ int WAV::Convert2ShiftedArray(double *raw) {
     return 0;
 }
 
+/* Note :: There is no padding for edge! 
+   TOOD :: need to add padding
+*/
 int WAV::Convert2Array(double **raw) {
   int i, j,read;
   read=fread(buf, size_unit, channels * shift_size, fp);
