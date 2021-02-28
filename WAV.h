@@ -262,7 +262,7 @@ int WAV::NewFile(const char *_file_name) {
 };
 
 int WAV::NewFile(std::string file_name_) {
-  NewFile(file_name_.c_str());
+  return NewFile(file_name_.c_str());
 }
 
 int WAV::Append(short *app_data, unsigned int app_size) {
@@ -312,7 +312,7 @@ int WAV::OpenFile(const char *_file_name) {
 };
 
 int WAV::OpenFile(std::string file_name_) {
-  OpenFile(file_name_.c_str());
+  return OpenFile(file_name_.c_str());
 }
 
 void WAV::ReadHeader() {
