@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <string.h>
+#include <string>
 #include <vector>
 
 // Data Type is fixed as short
@@ -64,7 +65,9 @@ public:
   inline WAV(short _ch, uint32_t _rate, int frame_size, int shift_size);
   inline ~WAV();
   inline int NewFile(const char *_file_name);
+  inline int NewFile(std::string file_name_);
   inline int OpenFile(const char *_file_name);
+  inline int OpenFile(std::string file_name_);
   inline int Append(short *app_data, unsigned int app_size);
   inline int Append(float*app_data, unsigned int app_size);
   inline void WriteHeader();
@@ -258,6 +261,10 @@ int WAV::NewFile(const char *_file_name) {
   return 0;
 };
 
+int WAV::NewFile(std::string file_name_) {
+  NewFile(file_name_.c_str());
+}
+
 int WAV::Append(short *app_data, unsigned int app_size) {
   fseek(fp, 0, SEEK_END);
 #ifndef NDEBUG
@@ -303,6 +310,10 @@ int WAV::OpenFile(const char *_file_name) {
 
   return 0;
 };
+
+int WAV::OpenFile(std::string file_name_) {
+  OpenFile(file_name_.c_str());
+}
 
 void WAV::ReadHeader() {
 
