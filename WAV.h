@@ -58,7 +58,8 @@ private:
 
   void* buf; 
 //  short* buf; 
-
+  const int short_numer = 32767;
+  const int short_denom = 32768;
 public:
   inline WAV();
   inline WAV(short _ch, uint32_t _rate);
@@ -84,9 +85,9 @@ public:
   inline void Print() const;
   inline void Rewind();
 
+  /* Note :: float type will be scaled as short type wav */
   inline int Convert2ShiftedArray(double **raw);
   inline int Convert2ShiftedArray(double *raw);
-
   inline int Convert2Array(double **raw);
 
   // Split 2 channel Wav into two 1 channel wav files.
@@ -631,7 +632,7 @@ int WAV::Convert2ShiftedArray(double **raw) {
        for (i = 0; i < shift_size; i++) {
         for (j = 0; j < channels; j++){
           raw[j][i + (frame_size - shift_size)] 
-            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+            = short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
         }
        }
         break;
@@ -658,7 +659,7 @@ int WAV::Convert2ShiftedArray(double **raw) {
         for (i = 0; i < read; i++) {
           for (j = 0; j < channels; j++)
           raw[j][i + (frame_size - shift_size)]
-             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+             =  short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
           }
       break;
       default:
@@ -704,7 +705,7 @@ int WAV::Convert2ShiftedArray(double *raw) {
        for (i = 0; i < shift_size; i++) {
         for (j = 0; j < channels; j++){
           raw[j*frame_size + i + (frame_size - shift_size)] 
-            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+            = short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
         }
        }
         break;
@@ -732,7 +733,7 @@ int WAV::Convert2ShiftedArray(double *raw) {
         for (i = 0; i < read; i++) {
           for (j = 0; j < channels; j++)
           raw[j*frame_size + i + (frame_size - shift_size)]
-             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+             =  short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
           }
       break;
       default:
@@ -768,7 +769,7 @@ int WAV::Convert2Array(double **raw) {
        for (i = 0; i < shift_size; i++) {
         for (j = 0; j < channels; j++){
           raw[j][i] 
-            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+            = short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
         }
        }
         break;
@@ -790,7 +791,7 @@ int WAV::Convert2Array(double **raw) {
         for (i = 0; i < read; i++) {
           for (j = 0; j < channels; j++)
           raw[j][i]
-             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+             =  short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
           }
       break;
       default:
