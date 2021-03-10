@@ -57,6 +57,7 @@ private:
   int size_unit;
 
   void* buf; 
+  bool isRead;
 //  short* buf; 
   const int short_numer = 32767;
   const int short_denom = 32768;
@@ -115,6 +116,7 @@ WAV::WAV() {
 #endif
   fp = nullptr;
   buf = nullptr;
+  isRead = false;
 
   riff_id[0] = 'R';
   riff_id[1] = 'I';
@@ -225,6 +227,7 @@ WAV::~WAV() {
 }
 
 void WAV::WriteHeader() {
+  if (isRead)return;
   if (!fp) {
     printf("ERROR::File doesn't exist\n");
   }
@@ -258,6 +261,7 @@ int WAV::NewFile(const char *_file_name) {
   WriteHeader();
   file_name = _file_name;
   IsOpen = true;
+  isRead = false;
 
   return 0;
 };
@@ -306,6 +310,7 @@ int WAV::OpenFile(const char *_file_name) {
   }
   ReadHeader();
   IsOpen = true;
+  isRead = true;
 
   UseBuf(frame_size,shift_size);
 
