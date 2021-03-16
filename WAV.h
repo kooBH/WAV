@@ -590,7 +590,7 @@ uint32_t WAV::GetSizeUnit(){
 
 
 uint32_t WAV::GetNumOfSamples() {
-  return riff_size / size_unit;
+  return (riff_size / size_unit)/channels;
 }
 
 
