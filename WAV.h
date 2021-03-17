@@ -63,8 +63,8 @@ private:
   const int short_denom = 32768;
 public:
   inline WAV();
-  inline WAV(short _ch, uint32_t _rate);
-  inline WAV(short _ch, uint32_t _rate, int frame_size, int shift_size);
+  inline WAV(short _ch, int _rate);
+  inline WAV(short _ch, int _rate, int frame_size, int shift_size);
   inline ~WAV();
   inline int NewFile(const char *_file_name);
   inline int NewFile(std::string file_name_);
@@ -97,10 +97,10 @@ public:
 
   inline int GetChannels();
   inline bool GetIsOpen();
-  inline uint32_t GetSize(); 
-  inline uint32_t GetSizeUnit(); 
-  inline uint32_t GetSampleRate();
-  inline uint32_t GetNumOfSamples();
+  inline int GetSize(); 
+  inline int GetSizeUnit(); 
+  inline int GetSampleRate();
+  inline int GetNumOfSamples();
   inline short GetFmtType();
   inline void UseBuf(int frame_size,int shift_size);
   inline bool checkValidHeader();
@@ -172,7 +172,7 @@ WAV::WAV() {
   shift_size = 512;
 }
 
-WAV::WAV(short _ch, uint32_t _rate) : WAV() {
+WAV::WAV(short _ch, int _rate) : WAV() {
 #ifndef NDEBUG
 //  printf("WAV::constructor (ch,rate)\n");
 #endif
@@ -196,7 +196,7 @@ WAV::WAV(short _ch, uint32_t _rate) : WAV() {
   riff_size = data_size + 44;
 }
 
-WAV::WAV(short _ch, uint32_t _rate, int _frame_size, int _shift_size)
+WAV::WAV(short _ch, int _rate, int _frame_size, int _shift_size)
     : WAV(_ch, _rate) {
 #ifndef NDEBUG
 //  printf("WAV::constructor(ch,rate,frame,shift)\n");
@@ -581,15 +581,15 @@ bool WAV::GetIsOpen(){
   return IsOpen;
 }
 
-uint32_t WAV::GetSize(){
+int WAV::GetSize(){
   return riff_size;
 }
-uint32_t WAV::GetSizeUnit(){
+int WAV::GetSizeUnit(){
   return size_unit;
 }
 
 
-uint32_t WAV::GetNumOfSamples() {
+int WAV::GetNumOfSamples() {
   return (riff_size / size_unit)/channels;
 }
 
@@ -613,7 +613,7 @@ void WAV::UseBuf(int _frame_size,int _shift_size){
   }
 }
 
-uint32_t WAV::GetSampleRate(){
+int WAV::GetSampleRate(){
   return sample_rate;
 }
 
