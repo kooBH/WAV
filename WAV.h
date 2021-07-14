@@ -58,13 +58,19 @@ private:
 
   void* buf; 
   bool isRead;
+  
+  /*for extensible format*/
+  bool extensible;
+  int w_valid_bits_per_sample;
+  int dw_channel_mask;
+  int sub_format;
+
 //  short* buf; 
-  const int short_numer = 32767;
-  const int short_denom = 32768;
+
 public:
   inline WAV();
-  inline WAV(short _ch, int _rate);
-  inline WAV(short _ch, int _rate, int frame_size, int shift_size);
+  inline WAV(short _ch, uint32_t _rate);
+  inline WAV(short _ch, uint32_t _rate, int frame_size, int shift_size);
   inline ~WAV();
   inline int NewFile(const char *_file_name);
   inline int NewFile(std::string file_name_);
@@ -86,9 +92,9 @@ public:
   inline void Print() const;
   inline void Rewind();
 
-  /* Note :: float type will be scaled as short type wav */
   inline int Convert2ShiftedArray(double **raw);
   inline int Convert2ShiftedArray(double *raw);
+
   inline int Convert2Array(double **raw);
 
   // Split 2 channel Wav into two 1 channel wav files.
@@ -97,10 +103,9 @@ public:
 
   inline int GetChannels();
   inline bool GetIsOpen();
-  inline int GetSize(); 
-  inline int GetSizeUnit(); 
-  inline int GetSampleRate();
-  inline int GetNumOfSamples();
+  inline uint32_t GetSize(); 
+  inline uint32_t GetSizeUnit(); 
+  inline uint32_t GetSampleRate();
   inline short GetFmtType();
   inline void UseBuf(int frame_size,int shift_size);
   inline bool checkValidHeader();
@@ -167,12 +172,13 @@ WAV::WAV() {
   IsOpen = false;
   use_buf = false;
   non_pcm = false;
+  extensible = false;
 
   frame_size = 512;
   shift_size = 512;
 }
 
-WAV::WAV(short _ch, int _rate) : WAV() {
+WAV::WAV(short _ch, uint32_t _rate) : WAV() {
 #ifndef NDEBUG
 //  printf("WAV::constructor (ch,rate)\n");
 #endif
@@ -196,7 +202,7 @@ WAV::WAV(short _ch, int _rate) : WAV() {
   riff_size = data_size + 44;
 }
 
-WAV::WAV(short _ch, int _rate, int _frame_size, int _shift_size)
+WAV::WAV(short _ch, uint32_t _rate, int _frame_size, int _shift_size)
     : WAV(_ch, _rate) {
 #ifndef NDEBUG
 //  printf("WAV::constructor(ch,rate,frame,shift)\n");
@@ -326,6 +332,7 @@ void WAV::ReadHeader() {
 
   unsigned char buffer4[4];
   unsigned char buffer2[2];
+  unsigned char buffer16[16];
   unsigned int temp;
   /*
    * http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
@@ -361,8 +368,10 @@ void WAV::ReadHeader() {
   if(fmt_size==18)
      non_pcm = true;
 
-  if(fmt_size==16 || fmt_size ==18);
+  if (fmt_size == 16 || fmt_size == 18);
   // Unkown fmt_size;
+  else if (fmt_size == 40)
+      extensible = true;
   else fmt_size=16;
 
   fread(buffer2, sizeof(buffer2), 1, fp);
@@ -437,6 +446,35 @@ void WAV::ReadHeader() {
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
   }
 
+  /* extensible format has more elements */
+  if (extensible) {
+      fread(buffer2, sizeof(buffer2), 1, fp);
+      cb_size = buffer2[0] | (buffer2[1] << 8);
+
+      if(cb_size!=22){
+          printf("ERROR::WAV size of extension is not correct (%d != %d)\n", cb_size, 22);
+          exit(-1);
+      }
+      
+      fread(buffer2, sizeof(buffer2), 1, fp);
+      w_valid_bits_per_sample = buffer2[0] | (buffer2[1] << 8);
+      
+      fread(buffer4, sizeof(buffer4), 1, fp);
+      w_valid_bits_per_sample = buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+
+      fread(buffer16, sizeof(buffer16), 1, fp);
+      //need subFormat reading
+
+      fread(fact_id, sizeof(fact_id), 1, fp);
+
+      fread(buffer4, sizeof(buffer4), 1, fp);
+      fact_size =
+          buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+
+      fread(buffer4, sizeof(buffer4), 1, fp);
+      dwSampleLength =
+          buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+  }
   fread(data_id, sizeof(data_id), 1, fp);
 
   fread(buffer4, sizeof(buffer4), 1, fp);
@@ -581,16 +619,11 @@ bool WAV::GetIsOpen(){
   return IsOpen;
 }
 
-int WAV::GetSize(){
+uint32_t WAV::GetSize(){
   return riff_size;
 }
-int WAV::GetSizeUnit(){
+uint32_t WAV::GetSizeUnit(){
   return size_unit;
-}
-
-
-int WAV::GetNumOfSamples() {
-  return (riff_size / size_unit)/channels;
 }
 
 
@@ -613,7 +646,7 @@ void WAV::UseBuf(int _frame_size,int _shift_size){
   }
 }
 
-int WAV::GetSampleRate(){
+uint32_t WAV::GetSampleRate(){
   return sample_rate;
 }
 
@@ -643,7 +676,7 @@ int WAV::Convert2ShiftedArray(double **raw) {
        for (i = 0; i < shift_size; i++) {
         for (j = 0; j < channels; j++){
           raw[j][i + (frame_size - shift_size)] 
-            = short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
         }
        }
         break;
@@ -670,7 +703,7 @@ int WAV::Convert2ShiftedArray(double **raw) {
         for (i = 0; i < read; i++) {
           for (j = 0; j < channels; j++)
           raw[j][i + (frame_size - shift_size)]
-             =  short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
           }
       break;
       default:
@@ -716,7 +749,7 @@ int WAV::Convert2ShiftedArray(double *raw) {
        for (i = 0; i < shift_size; i++) {
         for (j = 0; j < channels; j++){
           raw[j*frame_size + i + (frame_size - shift_size)] 
-            = short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
         }
        }
         break;
@@ -744,7 +777,7 @@ int WAV::Convert2ShiftedArray(double *raw) {
         for (i = 0; i < read; i++) {
           for (j = 0; j < channels; j++)
           raw[j*frame_size + i + (frame_size - shift_size)]
-             =  short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
           }
       break;
       default:
@@ -780,7 +813,7 @@ int WAV::Convert2Array(double **raw) {
        for (i = 0; i < shift_size; i++) {
         for (j = 0; j < channels; j++){
           raw[j][i] 
-            = short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+            = static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
         }
        }
         break;
@@ -802,7 +835,7 @@ int WAV::Convert2Array(double **raw) {
         for (i = 0; i < read; i++) {
           for (j = 0; j < channels; j++)
           raw[j][i]
-             =  short_numer*static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
+             =  static_cast<double>(reinterpret_cast<float*>(buf)[i * channels + j]);
           }
       break;
       default:
