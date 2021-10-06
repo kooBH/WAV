@@ -106,6 +106,7 @@ public:
   inline uint32_t GetSize(); 
   inline uint32_t GetSizeUnit(); 
   inline uint32_t GetSampleRate();
+  inline uint32_t GetNumOfSamples();
   inline short GetFmtType();
   inline void UseBuf(int frame_size,int shift_size);
   inline bool checkValidHeader();
@@ -626,6 +627,9 @@ uint32_t WAV::GetSizeUnit(){
   return size_unit;
 }
 
+uint32_t WAV::GetNumOfSamples(){
+	return riff_size/(2*channels)
+}
 
 void WAV::UseBuf(int _frame_size,int _shift_size){
 
