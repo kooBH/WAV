@@ -628,7 +628,7 @@ uint32_t WAV::GetSizeUnit(){
 }
 
 uint32_t WAV::GetNumOfSamples(){
-	return riff_size/(2*channels)
+  return riff_size / (2 * channels);
 }
 
 void WAV::UseBuf(int _frame_size,int _shift_size){
