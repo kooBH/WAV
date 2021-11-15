@@ -48,7 +48,7 @@ private:
                         // the nex chunk that will be read
   FILE *fp;
   bool IsOpen;
-  const char *file_name;
+  char file_name[1024];
   // For Input usage only
   bool use_buf;
   int frame_size;
@@ -107,13 +107,14 @@ public:
   inline uint32_t GetSizeUnit(); 
   inline uint32_t GetSampleRate();
   inline uint32_t GetNumOfSamples();
+  inline const char* GetFileName();
   inline short GetFmtType();
   inline void UseBuf(int frame_size,int shift_size);
   inline bool checkValidHeader();
   inline FILE* GetFilePointer();
 
   /*Split Wav fp into each channel */
-  inline void Split(char* );
+  inline static void Split(char* );
 };
 
 /* default WAV format */
@@ -267,9 +268,10 @@ int WAV::NewFile(const char *_file_name) {
     exit(-1);
   }
   WriteHeader();
-  file_name = _file_name;
+  strcpy(file_name,_file_name);
   IsOpen = true;
   isRead = false;
+
 
   return 0;
 };
@@ -311,7 +313,7 @@ int WAV::Append(float*app_data, unsigned int app_size) {
 
 int WAV::OpenFile(const char *_file_name) {
   fp = fopen(_file_name, "rb");
-  file_name = _file_name;
+  strcpy(file_name,_file_name);
   if (fp == NULL) {
     printf("WAV::OpenFile::Failed to Open : '%s'\n", _file_name);
     return 1;
@@ -873,26 +875,30 @@ short WAV::GetFmtType(){
 void WAV::Split(char* _file_name ) {
   const int fr = 512;
   char temp_file_name[512];
-  int ch = this->GetChannels();
+
+  WAV input;
+  input.OpenFile(_file_name);
+  int ch = input.GetChannels();
+  int sr = input.GetSampleRate();
   short *temp;
 
 
-  std::vector<WAV> splited(ch,WAV(1,sample_rate));
+  std::vector<WAV> splited(ch,WAV(1,sr));
 
-  temp    = new short[fr * channels];
+  temp  = new short[fr * ch];
 
-  for(int i=0;i<channels;i++){
+  for(int i=0;i<ch;i++){
   char *temp_str = strtok(_file_name, ".");
   sprintf(temp_file_name,"%s_%d.wav",temp_str,i+1);
   splited[i].NewFile(temp_file_name);
   }
 
   // Distribute
-  while(!this->IsEOF()){
-    ReadUnit(temp,fr*channels);
+  while(!input.IsEOF()){
+    input.ReadUnit(temp,fr*ch);
     for(int i=0;i<fr;i++){
-      for(int j=0;j<channels;j++)
-        splited[j].Append(temp + i*channels + j,1);
+      for(int j=0;j<ch;j++)
+        splited[j].Append(temp + i*ch + j,1);
     }
   }
 
@@ -903,6 +909,10 @@ void WAV::Split(char* _file_name ) {
 
 FILE* WAV::GetFilePointer() {
   return fp;
+}
+
+const char* WAV::GetFileName() {
+  return file_name;
 }
 
 #endif
