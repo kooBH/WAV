@@ -18,6 +18,8 @@ class WAV {
    * http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
    * */
 private:
+  uint32_t head_size=44;
+
   bool non_pcm;
   // 4bytes fixed size header infomation -> uint32_t
   char riff_id[4];    // riff string
@@ -113,6 +115,9 @@ public:
   inline bool checkValidHeader();
   inline FILE* GetFilePointer();
 
+  // Normalize WAV
+  inline void Normalize();
+
   /*Split Wav fp into each channel */
   inline static void Split(char* );
 };
@@ -169,7 +174,7 @@ WAV::WAV() {
   // Number of Samples * Number of Channels * Bit_per_sample / 8
   data_size = 0 * channels * bit_per_sample / 8;
 
-  riff_size = data_size + 44;
+  riff_size = data_size + head_size;
 
   IsOpen = false;
   use_buf = false;
@@ -201,7 +206,7 @@ WAV::WAV(short _ch, uint32_t _rate) : WAV() {
   block_align = bit_per_sample * channels / 8;
   // Number of Samples * Number of Channels * Bit_per_sample / 8
   data_size = 0 * channels * bit_per_sample / 8;
-  riff_size = data_size + 44;
+  riff_size = data_size + head_size;
 }
 
 WAV::WAV(short _ch, uint32_t _rate, int _frame_size, int _shift_size)
@@ -244,7 +249,7 @@ void WAV::WriteHeader() {
 #ifndef NDEBUG
 //  printf("WriteHeader::ftell %ld\n",ftell(fp));
 #endif
-  riff_size = data_size + 44;
+  riff_size = data_size + head_size;
 
   fwrite(riff_id, sizeof(char), 4, fp);
   fwrite(&(riff_size), sizeof(uint32_t), 1, fp);
@@ -332,7 +337,7 @@ int WAV::OpenFile(std::string file_name_) {
 }
 
 void WAV::ReadHeader() {
-
+  head_size = 44;
   unsigned char buffer4[4];
   unsigned char buffer2[2];
   unsigned char buffer16[16];
@@ -477,6 +482,8 @@ void WAV::ReadHeader() {
       fread(buffer4, sizeof(buffer4), 1, fp);
       dwSampleLength =
           buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+
+      head_size += 7;
   }
   fread(data_id, sizeof(data_id), 1, fp);
 
@@ -913,6 +920,60 @@ FILE* WAV::GetFilePointer() {
 
 const char* WAV::GetFileName() {
   return file_name;
+}
+
+/* channel wise normalization */
+void WAV::Normalize() {
+  int cnt;
+  short *max;
+  float *rate;
+
+  if (fmt_type != 1) {
+    printf("SORRY::Currently, I do not support Normalize() for other than short type.");
+    return;
+  }
+  if(fp)
+    fclose(fp);
+  fp = fopen(file_name, "rb+");
+
+  Rewind();
+
+  int n_sample = data_size / channels;
+
+  max = new short[channels];
+  memset(max, 0, sizeof(short) * channels);
+  rate = new float[channels];
+  short* temp_buf = new short[n_sample];
+  cnt = ReadUnit(temp_buf, n_sample);
+
+  if (cnt != n_sample) {
+    delete[] temp_buf;
+    printf("ERROR::Read Sample Num : %d != Sample Num %d\n",cnt,n_sample);
+    return;
+  }
+  Finish();
+  NewFile(file_name);
+  data_size = 0;
+
+  // Get Max
+  for (int i = 0; i < n_sample; i++) {
+    if (std::abs(temp_buf[i]) > max[i%channels])
+      max[i%channels] = std::abs(temp_buf[i]);
+  }
+  // Normalize
+  for(int i=0;i<channels;i++)
+    rate[i] = (float)((32767.0 / max[i]));
+
+  #pragma omp parallel for
+    for (int i = 0; i < n_sample; i++) {
+        temp_buf[i] = (short)(temp_buf[i] * rate[i%channels]);
+    }
+    Append(temp_buf, n_sample);
+    Print();
+
+    delete[] temp_buf;
+    delete[] max;
+    delete[] rate;
 }
 
 #endif
