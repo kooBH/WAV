@@ -932,13 +932,11 @@ void WAV::Normalize() {
     printf("SORRY::Currently, I do not support Normalize() for other than short type.");
     return;
   }
-  if(fp)
-    fclose(fp);
-  fp = fopen(file_name, "rb+");
+  if (fp)fclose(fp);
+  OpenFile(file_name);
+  Print();
 
-  Rewind();
-
-  int n_sample = data_size / channels;
+  int n_sample = data_size / size_unit;
 
   max = new short[channels];
   memset(max, 0, sizeof(short) * channels);
@@ -954,6 +952,9 @@ void WAV::Normalize() {
   Finish();
   NewFile(file_name);
   data_size = 0;
+
+  printf("n_sample : %d\n",n_sample);
+  printf("rate : %lf\n",rate);
 
   // Get Max
   for (int i = 0; i < n_sample; i++) {
