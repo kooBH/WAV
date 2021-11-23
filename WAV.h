@@ -953,9 +953,6 @@ void WAV::Normalize() {
   NewFile(file_name);
   data_size = 0;
 
-  printf("n_sample : %d\n",n_sample);
-  printf("rate : %lf\n",rate);
-
   // Get Max
   for (int i = 0; i < n_sample; i++) {
     if (std::abs(temp_buf[i]) > max[i%channels])
