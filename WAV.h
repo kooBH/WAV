@@ -960,9 +960,9 @@ void WAV::Normalize() {
   }
   // Normalize
   for(int i=0;i<channels;i++)
-    rate[i] = (float)((32767.0 / max[i]));
+    rate[i] = (float)((32767.0 /(float)max[i]));
 
-  #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < n_sample; i++) {
         temp_buf[i] = (short)(temp_buf[i] * rate[i%channels]);
     }
