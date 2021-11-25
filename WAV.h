@@ -81,6 +81,10 @@ public:
   inline int Append(short *app_data, unsigned int app_size);
   inline int Append(float*app_data, unsigned int app_size);
   inline void WriteHeader();
+  // set default
+  inline void Init();
+  // reset data;
+  inline void Clear();
   inline void Finish();
 
   inline void ReadHeader();
@@ -122,11 +126,7 @@ public:
   inline static void Split(char* );
 };
 
-/* default WAV format */
-WAV::WAV() {
-#ifndef NDEBUG
-//  printf("WAV::contsructor\n");
-#endif
+void WAV::Init() {
   fp = nullptr;
   buf = nullptr;
   isRead = false;
@@ -183,6 +183,15 @@ WAV::WAV() {
 
   frame_size = 512;
   shift_size = 512;
+
+}
+
+/* default WAV format */
+WAV::WAV() {
+#ifndef NDEBUG
+//  printf("WAV::contsructor\n");
+#endif
+  Init();
 }
 
 WAV::WAV(short _ch, uint32_t _rate) : WAV() {
@@ -267,6 +276,7 @@ void WAV::WriteHeader() {
 }
 
 int WAV::NewFile(const char *_file_name) {
+  Clear();
   fp = fopen(_file_name, "wb");
   if (fp == NULL) {
     printf("WAV::NewFile::Failed to Open : %s\n", _file_name);
@@ -952,6 +962,7 @@ void WAV::Normalize() {
   Finish();
   NewFile(file_name);
   data_size = 0;
+  riff_size = data_size + head_size;
 
   // Get Max
   for (int i = 0; i < n_sample; i++) {
@@ -972,6 +983,11 @@ void WAV::Normalize() {
     delete[] temp_buf;
     delete[] max;
     delete[] rate;
+}
+
+void WAV::Clear() {
+  data_size = 0;
+  riff_size = data_size + head_size;
 }
 
 #endif
