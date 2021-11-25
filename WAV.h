@@ -303,7 +303,6 @@ int WAV::Append(short *app_data, unsigned int app_size) {
 
   if (!fwrite(reinterpret_cast<void*>( app_data), size_unit, app_size, fp)){
     printf("ERROR::Append<short>\n");
-    exit(-1);
   }
   data_size += app_size *size_unit ;
   WriteHeader();
@@ -317,7 +316,6 @@ int WAV::Append(float*app_data, unsigned int app_size) {
 #endif
   if (!fwrite(reinterpret_cast<void*>(app_data), size_unit, app_size, fp)){
     printf("ERROR::Append<float>\n");
-    exit(-1);
   }
   data_size += app_size *size_unit ;
   printf("data_size : %d \n",data_size);
@@ -944,7 +942,7 @@ void WAV::Normalize() {
   }
   if (fp)fclose(fp);
   OpenFile(file_name);
-  Print();
+ // Print();
 
   int n_sample = data_size / size_unit;
 
@@ -978,7 +976,7 @@ void WAV::Normalize() {
         temp_buf[i] = (short)(temp_buf[i] * rate[i%channels]);
     }
     Append(temp_buf, n_sample);
-    Print();
+   // Print();
 
     delete[] temp_buf;
     delete[] max;
