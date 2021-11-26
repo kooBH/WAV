@@ -953,9 +953,7 @@ void WAV::Normalize() {
   cnt = ReadUnit(temp_buf, n_sample);
 
   if (cnt != n_sample) {
-    delete[] temp_buf;
-    printf("ERROR::Read Sample Num : %d != Sample Num %d\n",cnt,n_sample);
-    return;
+    printf("WARNNING::Read Sample Num : %d != Sample Num %d\n",cnt,n_sample);
   }
   Finish();
   NewFile(file_name);
@@ -963,7 +961,7 @@ void WAV::Normalize() {
   riff_size = data_size + head_size;
 
   // Get Max
-  for (int i = 0; i < n_sample; i++) {
+  for (int i = 0; i < cnt; i++) {
     if (std::abs(temp_buf[i]) > max[i%channels])
       max[i%channels] = std::abs(temp_buf[i]);
   }
@@ -972,10 +970,10 @@ void WAV::Normalize() {
     rate[i] = (float)((32767.0 /(float)max[i]));
 
 #pragma omp parallel for
-    for (int i = 0; i < n_sample; i++) {
+    for (int i = 0; i < cnt; i++) {
         temp_buf[i] = (short)(temp_buf[i] * rate[i%channels]);
     }
-    Append(temp_buf, n_sample);
+    Append(temp_buf, cnt);
    // Print();
 
     delete[] temp_buf;
