@@ -12,6 +12,7 @@ list(APPEND SRC
 	test.cpp
 	
 	WAV.h
+	WAV.cpp
 )
 
 add_executable(${PROJECT_NAME}  ${SRC})
