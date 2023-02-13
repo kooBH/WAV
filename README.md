@@ -1,6 +1,8 @@
 # WAV  
 c++ WAV class  
  
+ ## NOTE
+```float``` type wav format is not implemented!! 
  
  # Output
  ```c++
