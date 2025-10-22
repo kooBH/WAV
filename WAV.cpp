@@ -16,13 +16,12 @@ void WAV::Init() {
   wave_id[2] = 'V';
   wave_id[3] = 'E';
 
-  fmt_id[0] = 'f';
-  fmt_id[1] = 'm';
-  fmt_id[2] = 't';
-  fmt_id[3] = ' ';
+  chunk_id[0] = 'f';
+  chunk_id[1] = 'm';
+  chunk_id[2] = 't';
+  chunk_id[3] = ' ';
 
-  // short 16bit ->2 bytes
-  fmt_size = 16;
+  chunk_size = 16;
 
   // 1- PCM
   fmt_type = 1;
@@ -31,6 +30,7 @@ void WAV::Init() {
 
   // bit per sample, 8 or 16. not sure
   // Presume short = 16 bit
+  // short 16bit ->2 bytes
   bit_per_sample = 16;
   size_unit = bit_per_sample/8;
 
@@ -104,6 +104,10 @@ WAV::WAV(short _ch, uint32_t _rate, int _frame_size, int _shift_size)
   
 }
 
+WAV::WAV(short _ch, uint32_t _rate, int fmt_type_):WAV(_ch,_rate) {
+  this->SetFmtType(fmt_type_);
+}
+
 WAV::~WAV() {
 
   if (IsOpen) {
@@ -138,8 +142,8 @@ void WAV::WriteHeader() {
   fwrite(riff_id, sizeof(char), 4, fp);
   fwrite(&(riff_size), sizeof(uint32_t), 1, fp);
   fwrite((wave_id), sizeof(char), 4, fp);
-  fwrite((fmt_id), sizeof(char), 4, fp);
-  fwrite(&(fmt_size), sizeof(uint32_t), 1, fp);
+  fwrite((chunk_id), sizeof(char), 4, fp);
+  fwrite(&(chunk_size), sizeof(uint32_t), 1, fp);
   fwrite(&(fmt_type), sizeof(short), 1, fp);
   fwrite(&(channels), sizeof(short), 1, fp);
   fwrite(&(sample_rate), sizeof(uint32_t), 1, fp);
@@ -193,7 +197,6 @@ int WAV::Append(float*app_data, unsigned int app_size) {
     printf("ERROR::Append<float>\n");
   }
   data_size += app_size *size_unit ;
-  printf("data_size : %d \n",data_size);
   WriteHeader();
   return 0;
 };
@@ -243,7 +246,7 @@ void WAV::ReadHeader() {
 
   fread(wave_id, sizeof(wave_id), 1, fp);
 
-  fread(fmt_id, sizeof(fmt_id), 1, fp);
+  fread(chunk_id, sizeof(chunk_id), 1, fp);
 
   fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
@@ -253,17 +256,17 @@ void WAV::ReadHeader() {
   //Chunk size: 16, 18 or 40
   //
   //
-  fmt_size =
+  chunk_size =
       buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 
-  if(fmt_size==18)
+  if(chunk_size==18)
      non_pcm = true;
 
-  if (fmt_size == 16 || fmt_size == 18);
-  // Unkown fmt_size;
-  else if (fmt_size == 40)
+  if (chunk_size == 16 || chunk_size == 18);
+  // Unkown chunk_size;
+  else if (chunk_size == 40)
       extensible = true;
-  else fmt_size=16;
+  else chunk_size=16;
 
   fread(buffer2, sizeof(buffer2), 1, fp);
   // convert little endial to big endian 2 bytes int;
@@ -404,9 +407,9 @@ void WAV::Print()const {
   printf("riff_size      : %u \n", riff_size);
   printf("wave_id        : %c%c%c%c\n", wave_id[0], wave_id[1], wave_id[2],
          wave_id[3]);
-  printf("fmt_id         : %c%c%c%c\n", fmt_id[0], fmt_id[1], fmt_id[2],
-         fmt_id[3]);
-  printf("fmt_size       : %u\n", fmt_size);
+  printf("chunk_id       : %c%c%c%c\n", chunk_id[0], chunk_id[1], chunk_id[2],
+         chunk_id[3]);
+  printf("chunk_size     : %u\n", chunk_size);
   switch (fmt_type) {
   case 1:
     printf("fmt_type       : %u - PCM\n", fmt_type);
@@ -451,7 +454,7 @@ bool WAV::checkValidHeader() {
     return false; 
   if(!(fmt_type == 1 || fmt_type ==3 || fmt_type ==6 || fmt_type ==7))
     return false;
-  if(!(fmt_size == 16 || fmt_size == 18))
+  if(!(chunk_size == 16 || chunk_size == 18))
     return false;
   if(byte_rate!=(block_align*sample_rate))
     return false;
@@ -758,8 +761,28 @@ void WAV::SetSizes(int frame,int shift){
   shift_size = shift;
 }
 
-short WAV::GetFmtType(){
-  return fmt_type;
+void WAV::SetFmtType(int fmt_size){
+  if (fmt_size == WAV::float32) {
+    bit_per_sample = 32;
+    size_unit = bit_per_sample / 8;
+    byte_rate = sample_rate * channels * bit_per_sample / 8;
+    block_align = bit_per_sample * channels / 8;
+  }
+  //int16
+  else {
+    bit_per_sample = 16;
+    size_unit = bit_per_sample / 8;
+    byte_rate = sample_rate * channels * bit_per_sample / 8;
+    block_align = bit_per_sample * channels / 8;
+
+  
+  }
+
+
+}
+
+short WAV::GetFmtSize(){
+  return bit_per_sample/8;
 }
 
 void WAV::Split(char* _file_name ) {

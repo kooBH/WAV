@@ -25,12 +25,12 @@ private:
   char riff_id[4];    // riff string
   uint32_t riff_size; // overall size of fp in bytes
   char wave_id[4];    // wave string
-  char fmt_id[4];     // fmt string with trailing null char
+  char chunk_id[4];     // fmt string with trailing null char
 
   //          | pcm  | non-pcm
-  // fmt_size |  16  |     18
+  // chunk_size |  16  |     18
   //
-  uint32_t fmt_size;  // format chunk size 16,18,40
+  uint32_t chunk_size;  // format chunk size 16,18,40
   short
       fmt_type; // format type 1-PCM 3-IEEE float 6- 8bit A law, 7- 8bit ,u law
   unsigned short channels;       // no of channel
@@ -73,6 +73,7 @@ public:
    WAV();
    WAV(short _ch, uint32_t _rate);
    WAV(short _ch, uint32_t _rate, int frame_size, int shift_size);
+   WAV(short _ch, uint32_t _rate, int fmt_type);
    ~WAV();
    int NewFile(const char *_file_name);
    int NewFile(std::string file_name_);
@@ -106,6 +107,7 @@ public:
   // Split 2 channel Wav into two 1 channel wav files.
    void SplitBy2(const char* f1,const char* f2);
    void SetSizes(int frame,int shift);
+   void SetFmtType(int fmt);
 
    int GetChannels();
    bool GetIsOpen();
@@ -114,13 +116,15 @@ public:
    uint32_t GetSampleRate();
    uint32_t GetNumOfSamples();
    const char* GetFileName();
-   short GetFmtType();
+   short GetFmtSize();
    void UseBuf(int frame_size,int shift_size);
    bool checkValidHeader();
    FILE* GetFilePointer();
 
   // Normalize WAV
    void Normalize();
+
+   enum FMT{int16,float32};
 
   /*Split Wav fp into each channel */
    static void Split(char* );
