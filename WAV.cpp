@@ -24,7 +24,7 @@ void WAV::Init() {
   chunk_size = 16;
 
   // 1- PCM
-  fmt_type = 1;
+  fmt_type = fmt_types::PCM;
 
   channels = 0;
 
@@ -48,6 +48,7 @@ void WAV::Init() {
 
   // Number of Samples * Number of Channels * Bit_per_sample / 8
   data_size = 0 * channels * bit_per_sample / 8;
+  num_samples = 0;
 
   riff_size = data_size + head_size;
 
@@ -105,7 +106,7 @@ WAV::WAV(short _ch, uint32_t _rate, int _frame_size, int _shift_size)
 }
 
 WAV::WAV(short _ch, uint32_t _rate, int fmt_type_):WAV(_ch,_rate) {
-  this->SetFmtType(fmt_type_);
+  this->SetFmtCode(fmt_type_);
 }
 
 WAV::~WAV() {
@@ -151,7 +152,13 @@ void WAV::WriteHeader() {
   fwrite(&(block_align), sizeof(short), 1, fp);
   fwrite(&(bit_per_sample), sizeof(short), 1, fp);
   fwrite(data_id, sizeof(char), 4, fp);
-  fwrite(&(data_size), sizeof(uint32_t), 1, fp);
+  if (fmt_type == fmt_types::IEEE_float) {
+    fwrite(&(fact_size), sizeof(uint32_t), 1, fp);
+    fwrite(&(num_samples), sizeof(uint32_t), 1, fp);
+  }
+  else {
+    fwrite(&(data_size), sizeof(uint32_t), 1, fp);
+  }
 }
 
 int WAV::NewFile(const char *_file_name) {
@@ -176,30 +183,48 @@ int WAV::NewFile(std::string file_name_) {
 
 int WAV::Append(short *app_data, unsigned int app_size) {
   fseek(fp, 0, SEEK_END);
-#ifndef NDEBUG
-// printf("Append::ftell %ld | size %d\n",ftell(fp),app_size);
-#endif
-
   if (!fwrite(reinterpret_cast<void*>( app_data), size_unit, app_size, fp)){
     printf("ERROR::Append<short>\n");
   }
   data_size += app_size *size_unit ;
+  num_samples += app_size / channels;
   WriteHeader();
   return 0;
 };
 
+int WAV::Append(int*app_data, unsigned int app_size) {
+  fseek(fp, 0, SEEK_END);
+  if (!fwrite(reinterpret_cast<void*>(app_data), size_unit, app_size, fp)){
+    printf("ERROR::Append<int>\n");
+  }
+  data_size += app_size *size_unit ;
+  num_samples += app_size / channels;
+  WriteHeader();
+  return 0;
+};
+
+
 int WAV::Append(float*app_data, unsigned int app_size) {
   fseek(fp, 0, SEEK_END);
-#ifndef NDEBUG
-// printf("Append::ftell %ld | size %d\n",ftell(fp),app_size);
-#endif
   if (!fwrite(reinterpret_cast<void*>(app_data), size_unit, app_size, fp)){
     printf("ERROR::Append<float>\n");
   }
   data_size += app_size *size_unit ;
+  num_samples += app_size / channels;
   WriteHeader();
   return 0;
 };
+
+int WAV::Append(double*app_data, unsigned int app_size) {
+  fseek(fp, 0, SEEK_END);
+  if (!fwrite(reinterpret_cast<void*>(app_data), size_unit, app_size, fp)){
+    printf("ERROR::Append<double>\n");
+  }
+  data_size += app_size *size_unit ;
+  num_samples += app_size / channels;
+  WriteHeader();
+  return 0;
+}
 
 
 int WAV::OpenFile(const char *_file_name) {
@@ -271,42 +296,22 @@ void WAV::ReadHeader() {
   fread(buffer2, sizeof(buffer2), 1, fp);
   // convert little endial to big endian 2 bytes int;
   fmt_type = buffer2[0] | (buffer2[1] << 8);
-  if(fmt_type==1 || fmt_type == 3)
+  if(fmt_type==fmt_types::PCM || fmt_type == fmt_types::IEEE_float)
     ;
   // for undefined type
   else
-    fmt_type = 1;
+    fmt_type = fmt_types::PCM;
 
 
   // convert little endian to big endian 2 bytes int;
   
   fread(buffer2, sizeof(buffer2), 1, fp);
-  //Check
-  if(channels!=0){
-  temp = buffer2[0] | (buffer2[1] << 8);
-    if(temp!=channels){
-      printf("ERROR::WAV channels is not expected (%d != %d)\n",channels,temp);
-      exit(-1);
-    }
-  }
-  else
-    channels = buffer2[0] | (buffer2[1] << 8);
+  channels = buffer2[0] | (buffer2[1] << 8);
 
   fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
   // Check
-  if(sample_rate!=0){
-    temp
-      =  buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
-    if(temp != sample_rate){
-      printf("ERROR::WAV sampe_rate is not expected (%d != %d)\n",sample_rate,temp);  
-      exit(-1);
-    }
-
-  }   
-  else
-    sample_rate =
-      buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+  sample_rate =buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
 
   fread(buffer4, sizeof(buffer4), 1, fp);
   // convert little endial to big endian 4 bytes int;
@@ -320,6 +325,15 @@ void WAV::ReadHeader() {
   fread(buffer2, sizeof(buffer2), 1, fp);
   // convert little endial to big endian 2 bytes int;
   bit_per_sample = buffer2[0] | (buffer2[1] << 8);
+
+  if (fmt_type == fmt_types::PCM && bit_per_sample == 16)
+    fmt_code = FMT::int16;
+  else if (fmt_type == fmt_types::PCM && bit_per_sample == 32)
+    fmt_code = FMT::int32;
+  else if (fmt_type == fmt_types::IEEE_float && bit_per_sample == 32)
+    fmt_code = FMT::float32;
+  else if (fmt_type == fmt_types::IEEE_float && bit_per_sample == 64)
+    fmt_code = FMT::float64;
 
   size_unit = bit_per_sample/8;
 
@@ -373,16 +387,36 @@ void WAV::ReadHeader() {
   }
   fread(data_id, sizeof(data_id), 1, fp);
 
-  fread(buffer4, sizeof(buffer4), 1, fp);
-  // convert little endial to big endian 4 bytes int;
-  data_size =
-      buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+  if (strcmp(data_id, "data")) {
+    head_size += 4;
+    fread(buffer4, sizeof(buffer4), 1, fp);
+    fact_size = buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+
+    fread(buffer4, sizeof(buffer4), 1, fp);
+    num_samples = buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+    data_size = num_samples * channels * bit_per_sample / 8;
+
+  }
+  else {
+    fread(buffer4, sizeof(buffer4), 1, fp);
+    data_size =buffer4[0] | (buffer4[1] << 8) | (buffer4[2] << 16) | (buffer4[3] << 24);
+  }
+
 }
 
 size_t WAV::ReadUnit(short*dest,int unit){
   return fread(dest,size_unit,unit,fp);
 }
+
+size_t WAV::ReadUnit(int*dest,int unit){
+  return fread(dest,size_unit,unit,fp);
+}
+
 size_t WAV::ReadUnit(float*dest,int unit){
+  return fread(dest,size_unit,unit,fp);
+}
+
+size_t WAV::ReadUnit(double*dest,int unit){
   return fread(dest,size_unit,unit,fp);
 }
 
@@ -441,7 +475,10 @@ void WAV::Print()const {
   }
   printf("data_id        : %c%c%c%c\n", data_id[0], data_id[1], data_id[2],
          data_id[3]);
-  printf("data_size      : %u\n", data_size);
+  if (fmt_type == fmt_types::IEEE_float)
+    printf("num_samples    : %u\n", num_samples);
+  else 
+    printf("data_size      : %u\n", data_size);
   printf("duration       : %.3lf sec\n", (double)riff_size / byte_rate);
 }
 
@@ -755,30 +792,56 @@ int WAV::Convert2Array(double **raw) {
 
 
 
+void WAV::SetChannels(int ch) {
+  channels = ch;
+  byte_rate = sample_rate * channels * bit_per_sample / 8;
+  block_align = bit_per_sample * channels / 8;
+}
+void WAV::SetSamplerate(int sr) {
+  sample_rate = sr;
+  byte_rate = sample_rate * channels * bit_per_sample / 8;
+  block_align = bit_per_sample * channels / 8;
+
+}
+
 
 void WAV::SetSizes(int frame,int shift){
   frame_size = frame;
   shift_size = shift;
 }
 
-void WAV::SetFmtType(int fmt_size){
-  if (fmt_size == WAV::float32) {
-    bit_per_sample = 32;
-    size_unit = bit_per_sample / 8;
-    byte_rate = sample_rate * channels * bit_per_sample / 8;
-    block_align = bit_per_sample * channels / 8;
-  }
-  //int16
-  else {
+void WAV::SetFmtCode(int fmt_code_){
+  fmt_code = static_cast<FMT>(fmt_code_);
+  switch (fmt_code) {
+  case FMT::int16:
     bit_per_sample = 16;
-    size_unit = bit_per_sample / 8;
-    byte_rate = sample_rate * channels * bit_per_sample / 8;
-    block_align = bit_per_sample * channels / 8;
-
-  
+    fmt_type = fmt_types::PCM;
+    break;
+  case FMT::int32 :
+    bit_per_sample = 32;
+    fmt_type = fmt_types::PCM;
+    break;
+  case FMT::float32 :
+    bit_per_sample = 32;
+    fmt_type = fmt_types::IEEE_float;
+    break;
+  case FMT::float64:
+    bit_per_sample = 64;
+    fmt_type = fmt_types::IEEE_float;
+    break;
   }
 
+  if (fmt_type == fmt_types::IEEE_float) {
+    data_id[0] = 'f';
+    data_id[1] = 'a';
+    data_id[2] = 'c';
+    data_id[3] = 't';
+    fact_size = 4;
+  }
 
+  size_unit = bit_per_sample / 8;
+  byte_rate = sample_rate * channels * bit_per_sample / 8;
+  block_align = bit_per_sample * channels / 8;
 }
 
 short WAV::GetFmtSize(){
@@ -881,5 +944,6 @@ void WAV::Normalize() {
 
 void WAV::Clear() {
   data_size = 0;
+  num_samples = 0;
   riff_size = data_size + head_size;
 }

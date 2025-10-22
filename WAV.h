@@ -6,6 +6,7 @@
 //for types
 #include <stdint.h>
 
+
 #include <cstdlib>
 #include <string.h>
 #include <string>
@@ -18,8 +19,9 @@ class WAV {
    * http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html
    * */
 private:
-  uint32_t head_size=44;
 
+  // ---- Header Info ---- //
+  uint32_t head_size=44;
   bool non_pcm;
   // 4bytes fixed size header infomation -> uint32_t
   char riff_id[4];    // riff string
@@ -43,11 +45,19 @@ private:
   uint32_t cb_size;     //size of the extension
   char fact_id[4];
   uint32_t fact_size;
+  uint32_t num_samples;
   uint32_t dwSampleLength; 
 
   char data_id[4];      // DATA string or FLLR string
   uint32_t data_size;   // NumSamples * NumChannels * BitsPerSample/8 - size of
                         // the nex chunk that will be read
+
+public:
+  enum FMT{int16,int32,float32,float64};
+private : 
+  enum fmt_types{PCM=1,IEEE_float=3};
+  FMT fmt_code;
+
   FILE *fp;
   bool IsOpen;
   char file_name[1024];
@@ -80,7 +90,9 @@ public:
    int OpenFile(const char *_file_name);
    int OpenFile(std::string file_name_);
    int Append(short *app_data, unsigned int app_size);
+   int Append(int *app_data, unsigned int app_size);
    int Append(float*app_data, unsigned int app_size);
+   int Append(double*app_data, unsigned int app_size);
    void WriteHeader();
   // set default
    void Init();
@@ -93,7 +105,9 @@ public:
   /* There might be compile error for ReadUnit() in Visual Studio.
    * in this case, try to update your VS to most recent version. */
    size_t ReadUnit(short*dest,int unit);
+   size_t ReadUnit(int*dest,int unit);
    size_t ReadUnit(float*dest,int unit);
+   size_t ReadUnit(double*dest,int unit);
    int IsEOF() const;
 
    void Print() const;
@@ -106,8 +120,10 @@ public:
 
   // Split 2 channel Wav into two 1 channel wav files.
    void SplitBy2(const char* f1,const char* f2);
+   void SetChannels(int ch);
+   void SetSamplerate(int sr);
    void SetSizes(int frame,int shift);
-   void SetFmtType(int fmt);
+   void SetFmtCode(int fmt);
 
    int GetChannels();
    bool GetIsOpen();
@@ -124,7 +140,6 @@ public:
   // Normalize WAV
    void Normalize();
 
-   enum FMT{int16,float32};
 
   /*Split Wav fp into each channel */
    static void Split(char* );
