@@ -10,6 +10,7 @@ set(COMPILE_OPTION)
 list(APPEND SRC 
 	WAV.h
 	WAV.cpp
+	WAVw_wrap.cpp
 )
 
 if(APPLE)

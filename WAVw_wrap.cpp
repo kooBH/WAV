@@ -2,7 +2,7 @@
 #include "WAV.h"
 
 
-void* WAV_construct(short ch, uint32_t rate){
+void* WAV_construct(short ch, int rate){
     return static_cast<void*>(new WAV(ch,rate));
 }
 void WAV_release(void* obj){
