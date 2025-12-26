@@ -35,5 +35,4 @@ DLL_PREFIX int WAV_append_double(void* obj, double* app_data, unsigned int app_s
 DLL_PREFIX void WAV_finish(void* obj);
 DLL_PREFIX void WAV_rewind(void* obj);
 
-
 #endif
